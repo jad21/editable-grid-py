@@ -369,7 +369,7 @@ EditableGrid.prototype.processXML = function()
 						}
 					}
 				}
-
+				console.info("here",(col.getAttribute("hidden") ? col.getAttribute("hidden") == "true" : false))
 				// create new column           
 				columns.push(new Column({
 					name: col.getAttribute("name"),

@@ -49,10 +49,11 @@ class EditableGrid(object):
         self.columns[name] = {"field": field if field else name, "label": label, "type": _type, "editable": editable, "bar": bar, "hidden": hidden, "values": values}
         return self
 
-    def setHiddenColumns(self, columns):
+    def setHiddenColumns(self, *columns):
         for x in columns:
-            if type(columns[x]) is dict:
-                columns[x]['hidden'] = True
+            print(x)
+            if type(self.columns[x]) is dict:
+                self.columns[x]['hidden'] = True
         return self
 
     def setPaginator(self, pageCount, totalRowCount, unfilteredRowCount, customAttributes=None):
@@ -71,6 +72,8 @@ class EditableGrid(object):
         value = ""
         if type(row) is dict and field in row:
             value = row[field]
+        if type(value) is str:
+            value = value.encode(self.encoding, 'utf-8//IGNORE').decode()
         return value
 
     def getXML(self, rows=False, customRowAttributes=False, encodeCustomAttributes=False, includeMetadata=True):
@@ -87,8 +90,8 @@ class EditableGrid(object):
                 }
                 if 'bar' not in info:
                     attr["bar"] = "false"
-                if 'hidden' in info:
-                    attr["hidden"] = "true"
+
+                attr["hidden"] = "true" if 'hidden' in info and info['hidden'] else "false"
 
                 column = ET.SubElement(metadata, "column", **attr)
                 if type(info["values"]) is dict:
@@ -112,8 +115,7 @@ class EditableGrid(object):
             for row in rows:
                 self.getRowXML(dataNode, row, customRowAttributes, encodeCustomAttributes)
 
-        # exit(table)
-        return ET.tostring(table)
+        return ET.tostring(table, encoding="unicode")
 
     def getRowXML(self, parent, row, customRowAttributes, encodeCustomAttributes):
         rowNode = ET.SubElement(parent, "row", id=self._getRowField(row, "id"))
@@ -129,12 +131,16 @@ class EditableGrid(object):
             if self.writeColumnNames:
                 col.set("name", name)
             text = self._getRowField(row, field)
+
             if type(text) is bool:
                 text = "true" if text else "false"
+
             col.text = ET.CDATA(text)
 
     def renderXML(self, *arg):
-        return self.getXML(*arg)
+        xml = """<?xml version="1.0" encoding="utf-8" ?>
+        {}""".format(self.getXML(*arg))
+        return xml
 
     def mapToArray(self, values):
         arr = []
@@ -147,6 +153,9 @@ class EditableGrid(object):
 
     def getJSON(self, *params):
         # return (self.getPOJO(*params))
+        return json.dumps(self.getPOJO(*params))
+
+    def renderJSON(self, *params):
         return json.dumps(self.getPOJO(*params))
 
     def getPOJO(self, rows=False, customRowAttributes=False, encodeCustomAttributes=False, includeMetadata=True):
@@ -208,8 +217,9 @@ if __name__ == '__main__':
     })
 
     # add some other columns: email, url, boolean, date
+
     grid.addColumn("email", "EMAIL", "email")
-    # grid.addColumn("website", "WEBSITE", "url")
+    grid.addColumn("website", "WEBSITE", "url")
     grid.addColumn("freelance", "FREELANCE", "boolean")
     grid.addColumn("lastvisit", "LAST VISIT", "date")
 
@@ -239,6 +249,6 @@ if __name__ == '__main__':
             })
     # print(grid.getColumnFields())
     # print(grid.getColumnTypes())
-    # print(grid.renderXML(data))
+    print(grid.renderXML(data))
     # print(grid.getJSON(data))
     # print()

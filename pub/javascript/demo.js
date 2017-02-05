@@ -59,6 +59,7 @@ EditableGrid.prototype.initializeGrid = function()
 				// if you do, then don't forget to use Ajax in synchronous mode 
 				getOptionValuesForEdit: function (grid, column, rowIndex) {
 					var continent = editableGrid.getValueAt(rowIndex, editableGrid.getColumnIndex("continent"));
+					console.log("searching getOptionValuesForEdit", continent)
 					if (continent == "eu") return { "be" : "Belgique", "fr" : "France", "uk" : "Great-Britain", "nl": "Nederland"};
 					else if (continent == "am") return { "br" : "Brazil", "ca": "Canada", "us" : "USA" };
 					else if (continent == "af") return { "ng" : "Nigeria", "za": "South Africa", "zw" : "Zimbabwe" };
@@ -98,9 +99,15 @@ EditableGrid.prototype.initializeGrid = function()
 
 		// register the function that will handle model changes
 		modelChanged = function(rowIndex, columnIndex, oldValue, newValue, row) { 
-			displayMessage("Value for '" + this.getColumnName(columnIndex) + "' in row " + this.getRowId(rowIndex) + " has changed from '" + oldValue + "' to '" + newValue + "'");
+			field = this.getColumnName(columnIndex)
+			rowId = this.getRowId(rowIndex);
+			displayMessage("Value for '" + field + "' in row " + rowId + " has changed from '" + oldValue + "' to '" + newValue + "'");
 			if (this.getColumnName(columnIndex) == "continent") this.setValueAt(rowIndex, this.getColumnIndex("country"), ""); // if we changed the continent, reset the country
 			this.renderCharts();
+			
+			_data = {}
+			_data[field] = newValue;
+			helperAjax.update(rowId, _data);
 		};
 
 		// update paginator whenever the table is rendered (after a sort, filter, page change, etc.)
@@ -117,6 +124,8 @@ EditableGrid.prototype.initializeGrid = function()
 
 		rowRemoved = function(oldRowIndex, rowId) {
 			displayMessage("Removed row '" + oldRowIndex + "' - ID = " + rowId);
+			console.info("Removed row '" + oldRowIndex + "' - ID = " + rowId)
+			helperAjax.remove(rowId);
 		};
 
 		// render for the action column
@@ -204,7 +213,9 @@ EditableGrid.prototype.duplicate = function(rowIndex)
 	for (var r = 0; r < this.getRowCount(); r++) newRowId = Math.max(newRowId, parseInt(this.getRowId(r)) + 1);
 
 	// add new row
-	this.insertAfter(rowIndex, newRowId, values); 
+	this.insertAfter(rowIndex, newRowId, values);
+	values["continent"] = editableGrid.getValueAt(rowIndex, editableGrid.getColumnIndex("continent"));
+	helperAjax.insert(newRowId, values);
 };
 
 //function to render our two demo charts
@@ -257,3 +268,41 @@ EditableGrid.prototype.updatePaginator = function()
 	else link.css("cursor", "pointer").click(function(event) { editableGrid.lastPage(); });
 	paginator.append(link);
 };
+
+
+
+var helperAjax = (function($, editableGrid){
+	return {
+		/*insert duplicate*/
+		"insert": function(id, values){
+			values["id"] = id
+			if(values["freelance"]){
+				values["freelance"] = 1;
+			}else{
+				values["freelance"] = 0;
+			}
+			var request = $.ajax({
+				url: "/data/insert",
+				type: "POST",
+				data: values
+			});
+		},
+		/*update a field*/
+		"update": function(id, values){
+			values["id"] = id
+			var request = $.ajax({
+				url: "/data/update",
+				type: "POST",
+				data: values
+			});
+		},
+		/*remove by id*/
+		"remove": function(id){
+			var request = $.ajax({
+				url: "/data/remove",
+				method: "GET",
+				data: { id : id}
+			});
+		}
+	}
+})(window.$, editableGrid);
