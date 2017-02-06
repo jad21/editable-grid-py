@@ -125,6 +125,7 @@ class Data(object):
         for line in d:
             id, name, firstname, age, height, continent, country, email, freelance, lastvisit, website = line.split(";")
             if id == 'id':
+                f.write(line)
                 continue
             elif id == search_id:
 
